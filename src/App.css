@@ -36,3 +36,85 @@
     transform: rotate(360deg);
   }
 }
+
+
+html,
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  text-align: center;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5 {
+  font-weight: normal;
+}
+
+h1:not(#title) {
+  border-bottom: 1px solid #ccc;
+  margin-top: 50px;
+}
+
+a {
+  color: #000;
+  text-decoration: underline;
+}
+
+#states path {
+  fill: #000;
+  stroke: #fff;
+}
+
+#states path:hover {
+  fill: red;
+}
+
+#map {
+  width: 960px;
+  height: 500px;
+  margin-left: -180px;
+  display: block;
+}
+
+#buttons {
+  width: 400px;
+  margin: 0 auto;
+  display: block;
+  text-align: center;
+}
+
+h1 pre {
+  text-align: center;
+}
+
+#bomb {
+  width: 100%;
+  text-align: center;
+  display: block;
+}
+
+#content {
+  width: 600px;
+  display: block;
+  text-align: left;
+  margin: 50px auto;
+  margin-bottom: 100px;
+}
+
+#footer {
+  width: 100%;
+  display: block;
+  text-align: center;
+  border-top: 1px solid #ccc;
+  padding-top: 10px;
+  font-size: 12px;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}

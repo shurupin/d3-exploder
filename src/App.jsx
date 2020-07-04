@@ -1,14 +1,15 @@
 import React from 'react';
 import logo from './logo.svg';
 import './App.css';
-import BarChart from './components/BarChart';
+// import BarChart from './components/BarChart';
+import Exploder from './components/Exploder';
 
 function App() {
   return (
     <div className="App">
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
-        <BarChart />
+        <Exploder />
         <p>
           Edit <code>src/App.js</code> and save to reload.
         </p>
