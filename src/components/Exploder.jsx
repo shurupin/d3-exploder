@@ -81,6 +81,7 @@ export default class Exploder extends Component {
           .domain(feature_domain)
           .range([0, Math.PI * 2]);
 
+        const paths_circle = [];
         const states = g
           .append('g')
           .attr('id', 'states')
@@ -88,7 +89,12 @@ export default class Exploder extends Component {
           .data(state_features)
           .enter()
           .append('path')
-          .attr('d', path);
+          .attr('d', function (departement) {
+            const path_map = path(departement);
+            const path_circle = bar_chart_circle(departement);
+            paths_circle.push(path_circle);
+            return path_map;
+          });
 
         const default_size = function (d, i) {
           return 40;
@@ -222,6 +228,28 @@ export default class Exploder extends Component {
             );
         });
 
+        addButton('static', function (d, i) {
+          // hide axis
+          x_axis_g.transition().duration(500).style('opacity', 1);
+          y_axis_g.transition().duration(500).style('opacity', 1);
+
+          states
+            .transition()
+            .duration(500)
+            .call(
+              exploder.position(function (d, i) {
+                const x = xScale(i) + (-0.5 + Math.random()) * 70;
+                const y = 200;
+                return [x, y];
+              }),
+            )
+            .duration(3000)
+            .transition()
+            .attr('d', function (d, i) {
+              return paths_circle[i];
+            });
+        });
+
         // --------------------------
         //
         // realign map
@@ -230,6 +258,45 @@ export default class Exploder extends Component {
         addButton('reset', function () {
           states.transition().duration(500).attr('d', path).attr('transform', 'translate(0,0)');
         });
+
+        function bar_chart_circle(departement) {
+          // one departement can be made of several polygons.
+          // I keep only the biggest polygon.
+
+          const center = path.centroid(departement);
+          // const inscrits = 250000; /* departement.properties.Inscrits */
+          // const scale2 = 50;
+          // const radius = Math.sqrt(inscrits) / scale2;
+          const radius = 15;
+          const n =
+            departement.geometry.coordinates
+              .map(function (coord) {
+                return coord[0].length;
+              })
+              .reduce(function (a, b) {
+                return a + b;
+              }) - 1;
+          let angle;
+          const angleOffset = 0;
+          let x0;
+          let y0;
+          let i = -1;
+          const points = [];
+
+          while (++i < n) {
+            // do the math on the centered unit circle
+            angle = angleOffset + (i * 2 * Math.PI) / n;
+            x0 = Math.cos(angle);
+            y0 = Math.sin(angle);
+
+            // scale and translate
+            x0 = x0 * radius + center[0];
+            y0 = y0 * radius + center[1];
+            points.push(`${x0} ${y0}`);
+          }
+          // create a path
+          return `M ${points.join(' L ')} Z`;
+        }
       })
       .catch(function (error) {
         console.log('error d3 json = ', error);
