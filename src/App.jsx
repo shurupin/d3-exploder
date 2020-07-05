@@ -3,6 +3,7 @@ import logo from './logo.svg';
 import './App.css';
 // import BarChart from './components/BarChart';
 import Exploder from './components/Exploder';
+import Tweening from './components/Tweening';
 
 function App() {
   return (
@@ -10,6 +11,7 @@ function App() {
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
         <Exploder />
+        <Tweening />
         <p>
           Edit <code>src/App.js</code> and save to reload.
         </p>

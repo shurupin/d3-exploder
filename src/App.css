@@ -118,3 +118,8 @@ h1 pre {
   stroke: #000;
   shape-rendering: crispEdges;
 }
+
+path {
+  fill: #ccc;
+  stroke: #000;
+}
