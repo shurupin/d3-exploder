@@ -1,13 +1,9 @@
-/* eslint-disable no-use-before-define */
-/* eslint-disable @typescript-eslint/no-use-before-define */
-/* eslint-disable camelcase */
-/* eslint-disable @typescript-eslint/camelcase */
 import React, { Component } from 'react';
 import * as d3 from 'd3';
 import * as topojson from 'topojson';
 import { exploder as myExportedExploder } from '../utils/d3-exploder';
 
-export default class Exploder extends Component {
+export default class BelgiumMapChart4 extends Component {
   constructor(props) {
     super(props);
     this.mapRef = React.createRef();
@@ -22,23 +18,31 @@ export default class Exploder extends Component {
     const margin = { top: 20, right: 20, bottom: 30, left: 40 };
     const width = 960 - margin.left - margin.right;
     const height = 500 - margin.top - margin.bottom;
-    // let centered;
+    let centered;
     let animation;
 
-    const projection = d3.geoAlbersUsa().scale(width);
+    const projection = d3
+      .geoAlbers()
+      .center([1, 50.2])
+      .rotate([-4.668, 0])
+      // .parallels([51.74, 49.34])
+      .translate([width / 2, height / 2])
+      .scale(width * 15);
 
     const path = d3.geoPath().projection(projection);
 
     const svg = d3
-      .select('#map')
+      .select('#belgium-map-chart-4')
       .append('svg')
       .attr('width', width + margin.left + margin.right)
       .attr('height', height + margin.top + margin.bottom)
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
-    d3.json('https://raw.githubusercontent.com/bsouthga/d3-exploder/master/docs/us.json')
-      .then(function (us) {
-        const state_features = topojson.feature(us, us.objects.states).features;
+    d3.json(
+      'https://raw.githubusercontent.com/deldersveld/topojson/master/countries/belgium/belgium-arrondissements.json',
+    )
+      .then(function (bg) {
+        const state_features = topojson.feature(bg, bg.objects.BEL_adm2).features;
 
         const feature_domain = [0, state_features.length - 1];
 
@@ -80,45 +84,37 @@ export default class Exploder extends Component {
 
         const g = svg.append('g');
 
-        // const scale = d3
-        //   .scaleLinear()
-        //   .domain(feature_domain)
-        //   .range([0, Math.PI * 2]);
+        const scale = d3
+          .scaleLinear()
+          .domain(feature_domain)
+          .range([0, Math.PI * 2]);
 
-        // const paths_circle = [];
-
-        const paths_rectangle = [];
-
+        const paths_circle = [];
         const states = g
           .append('g')
           .attr('id', 'states')
           .selectAll('path')
-          .data(state_features)
-
+          .data(
+            state_features.filter(function (d) {
+              return d.properties.ID_1 == '263';
+            }),
+          )
           .enter()
           .append('path')
-          .attr('d', function (state) {
-            // draw states
-            const path_map = path(state);
-
-            // circles
-            // const path_circle = circle(state);
-            // paths_circle.push(path_circle);
-
-            // transform to rectangles and place them
-            const path_rectangle = rectangle(state);
-            paths_rectangle.push(path_rectangle);
-
+          .attr('d', function (departement) {
+            const path_map = path(departement);
+            const path_circle = bar_chart_circle(departement);
+            paths_circle.push(path_circle);
             return path_map;
           });
 
         const default_size = function (d, i) {
           return 40;
         };
-        const exploder = myExploder.projection(projection); // .size(default_size)
+        const exploder = myExploder.projection(projection).size(default_size);
 
         function addButton(text, callback) {
-          d3.select('#buttons')
+          d3.select('#buttons-belgium-map-chart-4')
             .append('button')
             .text(text)
             .on('click', function () {
@@ -132,6 +128,95 @@ export default class Exploder extends Component {
               callback.call(this);
             });
         }
+
+        // --------------------------
+        //
+        // randomly ordered grid
+        //
+        // --------------------------
+        addButton('random grid', function () {
+          const rand = d3.shuffle(d3.range(state_features.length));
+          states
+            .transition()
+            .duration(500)
+            .call(
+              exploder.position(function (d, index) {
+                const i = rand[index];
+                const px = Math.max(0, width - 9 * 60) / 2;
+                return [px + (i % 10) * 60, 70 + Math.floor(i / 10) * 60];
+              }),
+            );
+        });
+
+        // --------------------------
+        //
+        // Circle Plot
+        //
+        // --------------------------
+        function circle(d, i) {
+          const t = scale(i);
+          const r = (height / 2) * 0.8;
+          const x = width / 2 + r * Math.cos(t);
+          const y = height / 2 + r * Math.sin(t);
+          return [x, y];
+        }
+        addButton('circle', function (d, i) {
+          states.transition().duration(500).call(exploder.position(circle));
+        });
+
+        // --------------------------
+        //
+        // Figure 8 plot
+        //
+        // --------------------------
+        function figure8(d, i) {
+          const t = scale(i);
+          const r = (height / 2) * 0.8;
+          var d = 1 + Math.pow(Math.sin(t), 2);
+          const x = width / 2 + (r * Math.cos(t)) / d;
+          const y = height / 2 + (r * Math.sin(t) * Math.cos(t)) / d;
+          return [x, y];
+        }
+        addButton('figure 8 animated', function () {
+          let advance = 1;
+          function tick() {
+            states
+              .transition()
+              .duration(500)
+              .call(
+                exploder.position(function (d, i) {
+                  return figure8(d, i + advance++);
+                }),
+              );
+          }
+          animation = setInterval(tick, 550);
+          tick();
+        });
+
+        // --------------------------
+        //
+        // spiral Plot
+        //
+        // --------------------------
+        const spiral_scale = d3.scaleLinear().domain(feature_domain).range([0, 50000]);
+        const size_scale = d3.scaleLinear().domain(feature_domain).range([10, 100]);
+
+        function spiral(d, i) {
+          const t = spiral_scale(i);
+          const x = width / 2 + Math.pow(t, 1 / 2) * Math.cos(t);
+          const y = height / 2 + Math.pow(t, 1 / 2) * Math.sin(t);
+          return [x, y];
+        }
+        addButton('spiral', function (d, i) {
+          states
+            .transition()
+            .duration(500)
+            .call(
+              exploder.position(spiral).size(function (d, i) {
+                return size_scale(i);
+              }),
+            );
+        });
 
         // --------------------------
         //
@@ -155,7 +240,7 @@ export default class Exploder extends Component {
             );
         });
 
-        /* addButton('static', function (d, i) {
+        addButton('static', function (d, i) {
           // hide axis
           x_axis_g.transition().duration(500).style('opacity', 1);
           y_axis_g.transition().duration(500).style('opacity', 1);
@@ -175,7 +260,7 @@ export default class Exploder extends Component {
             .attr('d', function (d, i) {
               return paths_circle[i];
             });
-        }); */
+        });
 
         // --------------------------
         //
@@ -186,107 +271,31 @@ export default class Exploder extends Component {
           states.transition().duration(500).attr('d', path).attr('transform', 'translate(0,0)');
         });
 
-        // function circle(state) {
-        //   // one departement can be made of several polygons.
-        //   // I keep only the biggest polygon.
+        function bar_chart_circle(departement) {
+          // one departement can be made of several polygons.
+          // I keep only the biggest polygon.
 
-        //   const center = path.centroid(state);
-        //   // const inscrits = 250000; /* departement.properties.Inscrits */
-        //   // const scale2 = 50;
-        //   // const radius = Math.sqrt(inscrits) / scale2;
-        //   const radius = 15;
-        //   const n =
-        //     state.geometry.coordinates
-        //       .map(function (coord) {
-        //         return coord[0].length;
-        //       })
-        //       .reduce(function (a, b) {
-        //         return a + b;
-        //       }) - 1;
-        //   let angle;
-        //   const angleOffset = 0;
-        //   let x0;
-        //   let y0;
-        //   let i = -1;
-        //   const points = [];
-
-        //   while (++i < n) {
-        //     // do the math on the centered unit circle
-        //     angle = angleOffset + (i * 2 * Math.PI) / n;
-        //     x0 = Math.cos(angle);
-        //     y0 = Math.sin(angle);
-
-        //     // scale and translate
-        //     x0 = x0 * radius + center[0];
-        //     y0 = y0 * radius + center[1];
-        //     points.push(`${x0} ${y0}`);
-        //     // [`123 125`, `234 235`].join(' L ')
-        //     // `123 125 L 234 235`
-        //   }
-        //   // create a path
-        //   return `M ${points.join(' L ')} Z`;
-        //   // `M 123 125 L 234 235 L 456 489 Z`
-        // }
-
-        // --------------------------
-        //
-        // rectangle map
-        //
-        // --------------------------
-        addButton('rectangle', function (d, i) {
-          // hide axis
-          x_axis_g.transition().duration(500).style('opacity', 1);
-          y_axis_g.transition().duration(500).style('opacity', 1);
-
-          states
-            .transition()
-            .duration(500)
-            // transit and place polygons along one line
-            .call(
-              exploder.position(function (d, i) {
-                const x = xScale(i) + -0.5 * 70; // + Math.random()
-                const y = 300; // alignment along the Y
-                return [x, y];
-              }),
-            )
-            .duration(3000)
-            // .transition()
-            .attr('d', function (d, i) {
-              return paths_rectangle[i];
-            });
-        });
-
-        function rectangle(state_polygon) {
-          // cenroids of initial states polygons
-          const centroid = path.centroid(state_polygon);
-
-          // the bar height is calculated based on a quantitative value from the states properties
-          // lust for now it's ID
-          const bar_height = state_polygon.id;
-
-          // the width is fixed for all the bars
-          const bar_width = 15;
-
-          //
-          // const n =
-          //   state_polygon.geometry.coordinates
-          //     .map(function (coord) {
-          //       return coord[0].length;
-          //     })
-          //     .reduce(function (a, b) {
-          //       return a + b;
-          //     }) - 1;
-
-          // bar verticies
+          const center = path.centroid(departement);
+          // const inscrits = 250000; /* departement.properties.Inscrits */
+          // const scale2 = 50;
+          // const radius = Math.sqrt(inscrits) / scale2;
+          const radius = 15;
+          const n =
+            departement.geometry.coordinates
+              .map(function (coord) {
+                return coord[0].length;
+              })
+              .reduce(function (a, b) {
+                return a + b;
+              }) - 1;
+          let angle;
+          const angleOffset = 0;
+          let x0;
+          let y0;
+          let i = -1;
           const points = [];
 
-          // bar_width is calculated along X, bar_height is along Y axes
-          points.push(`${centroid[0] - bar_width} ${centroid[1] + bar_height}`);
-          points.push(`${centroid[0] + bar_width} ${centroid[1] + bar_height}`);
-          points.push(`${centroid[0] + bar_width} ${centroid[1] - bar_height}`);
-          points.push(`${centroid[0] - bar_width} ${centroid[1] - bar_height}`);
-
-          /*           while (++i < n) {
+          while (++i < n) {
             // do the math on the centered unit circle
             angle = angleOffset + (i * 2 * Math.PI) / n;
             x0 = Math.cos(angle);
@@ -296,12 +305,9 @@ export default class Exploder extends Component {
             x0 = x0 * radius + center[0];
             y0 = y0 * radius + center[1];
             points.push(`${x0} ${y0}`);
-            // [`123 125`, `234 235`].join(' L ')
-            // `123 125 L 234 235`
-          } */
+          }
           // create a path
           return `M ${points.join(' L ')} Z`;
-          // `M 123 125 L 234 235 L 456 489 Z`
         }
       })
       .catch(function (error) {
@@ -312,8 +318,8 @@ export default class Exploder extends Component {
   render() {
     return (
       <>
-        <div id="buttons" />
-        <div id="map" ref={this.mapRef} />
+        <div id="buttons-belgium-map-chart-4" />
+        <div id="belgium-map-chart-4" ref={this.mapRef} />
       </>
     );
   }
